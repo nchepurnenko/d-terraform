@@ -25,18 +25,4 @@ resource "null_resource" "createJson" {
   }
 }
 
-resource "local_file" "backendConf" {
-  content  = <<EOT
-endpoint = "storage.yandexcloud.net"
-bucket = "${yandex_storage_bucket.tf-backend.bucket}"
-region = "ru-central1"
-key = "terraform/terraform.tfstate"
-access_key = "${yandex_iam_service_account_static_access_key.sa-terrafom-static-key.access_key}"
-secret_key = "${yandex_iam_service_account_static_access_key.sa-terrafom-static-key.secret_key}"
-skip_region_validation = true
-skip_credentials_validation = true
-EOT
-  filename = "../backend.key"
-}
-
 

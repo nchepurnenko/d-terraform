@@ -6,7 +6,14 @@ terraform {
     }
   }
 
-  backend "s3" {}
+  backend "remote" {
+    hostname     = "app.terraform.io"
+    organization = "devops8"
+
+    workspaces {
+      name = "stage"
+    }
+  }
 }
 
 provider "yandex" {

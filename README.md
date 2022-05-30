@@ -3,7 +3,7 @@
 ### Предварительная настройка
 Подготовил облачную инфраструктуру в ЯО при помощи Terraform:
 
-Для подготовки перед настройкой инфраструкты создал отдельную [terraform-конфигурацию](./init), с помощью которой создается сервисный аккаунт, бакет для terraform backend и файл его конфигурации.
+Для подготовки перед настройкой инфраструкты создал отдельную [terraform-конфигурацию](./init), с помощью которой создается сервисный аккаунт.
 1. Для начала необходимо установить и настроить [Yandex Cloud CLI](https://cloud.yandex.ru/docs/cli/quickstart)
 2. После разместить в домашней директории пользователя файл `.terraformrc`
     ```js
@@ -21,24 +21,16 @@
     ```sh
     terrafrom apply -var-file=.tfvars
     ```
-По окончании в корне проекта будут лежать два файла `backend.key` с настройками terrafrom backend и `sa_terraform_auth.key`  с ключами для сервисного аккаунта.  
+По окончании в корне проекта будут лежать файл `sa_terraform_auth.key`  с ключами для сервисного аккаунта.  
 
 ### Создание Kubernetes кластера
 
-1. Настроил workspace
-    ```sh
-    $ terraform workspace list
-    * default
-    $ terraform workspace new stage
-    Created and switched to workspace "stage"!
-    $ terraform workspace list
-      default
-    * stage
-    ```
+2. В качестве terraform backend использую terraform cloud
 3. [Конфигурация VPC](vpc.tf)
 2. Воспользовался сервисом Yandex Managed Service for Kubernetes.  
 [Конфигурация кластера и нод](cluster.tf)      
-3. По окончании конфигурации кластера terraform локально выполняет команду `yc managed-kubernetes cluster get-credentials --id --external`, помещая данные для доступа к созданному кластеру в `~/.kube/config`
+3. По окончании конфигурации кластера необходимо локально выполнить команду 
+`yc managed-kubernetes cluster get-credentials --id catp18doqplbue4ced05 --external`, для генерации конфига для доступа к созданному кластеру в `~/.kube/config`
 4. [Результат](files/tf_plan1.md) выполнения `terrafrom plan` на этом этапе
 5. После запуска `terraform apply` проверил, что кластер k8s успешно запустился
     ```sh
@@ -77,29 +69,47 @@
 ---
 ### Создание тестового приложения
 
-Для перехода к следующему этапу необходимо подготовить тестовое приложение, эмулирующее основное приложение разрабатываемое вашей компанией.
-
-Способ подготовки:
-
-1. Рекомендуемый вариант:  
-   а. Создайте отдельный git репозиторий с простым nginx конфигом, который будет отдавать статические данные.  
-   б. Подготовьте Dockerfile для создания образа приложения.  
-2. Альтернативный вариант:  
-   а. Используйте любой другой код, главное, чтобы был самостоятельно создан Dockerfile.
-
-Ожидаемый результат:
-
-1. Git репозиторий с тестовым приложением и Dockerfile.
-2. Регистр с собранным docker image. В качестве регистра может быть DockerHub или [Yandex Container Registry](https://cloud.yandex.ru/services/container-registry), созданный также с помощью terraform.
+Подготовил тестовое приложение и Dockerfile для него.
+[Github](https://github.com/nchepurnenko/d-app)  
+[Dockerhub](https://hub.docker.com/r/chebyrek/d-app)
 
 ---
 ### Подготовка cистемы мониторинга и деплой приложения
 
-Уже должны быть готовы конфигурации для автоматического создания облачной инфраструктуры и поднятия Kubernetes кластера.  
-Теперь необходимо подготовить конфигурационные файлы для настройки нашего Kubernetes кластера.
+Задеплоил в кластер стек Prometheus-Alertmanager-Grafana с помощью helm
+```
+$ helm install stable prometheus-community/kube-prometheus-stack
+NAME: stable
+LAST DEPLOYED: Mon May 30 10:11:22 2022
+NAMESPACE: default
+STATUS: deployed
+REVISION: 1
 
-Цель:
-1. Задеплоить в кластер [prometheus](https://prometheus.io/), [grafana](https://grafana.com/), [alertmanager](https://github.com/prometheus/alertmanager), [экспортер](https://github.com/prometheus/node_exporter) основных метрик Kubernetes.
+$ kubectl --namespace default get pods -l "release=stable"
+NAME                                                   READY   STATUS    RESTARTS   AGE
+stable-kube-prometheus-sta-operator-6ff96ff48d-9tmkh   1/1     Running   0          2m47s
+stable-kube-state-metrics-65bcb89bd9-ssgd8             1/1     Running   0          2m48s
+stable-prometheus-node-exporter-7qthb                  1/1     Running   0          2m48s
+stable-prometheus-node-exporter-w6kq4                  1/1     Running   0          2m48s
+stable-prometheus-node-exporter-wgq6p                  1/1     Running   0          2m48s
+```
+Для доступа к интерфейсу grafana изменил тип на LoadBalancer.
+```
+$ kubectl edit svc stable-grafana
+
+$ kubectl get svc
+NAME                                      TYPE           CLUSTER-IP      EXTERNAL-IP    PORT(S)                      AGE
+alertmanager-operated                     ClusterIP      None            <none>         9093/TCP,9094/TCP,9094/UDP   14m
+kubernetes                                ClusterIP      10.96.128.1     <none>         443/TCP                      22m
+prometheus-operated                       ClusterIP      None            <none>         9090/TCP                     14m
+stable-grafana                            LoadBalancer   10.96.172.130   51.250.42.99   80:31234/TCP                 15m
+stable-kube-prometheus-sta-alertmanager   ClusterIP      10.96.253.181   <none>         9093/TCP                     15m
+stable-kube-prometheus-sta-operator       ClusterIP      10.96.248.228   <none>         443/TCP                      15m
+stable-kube-prometheus-sta-prometheus     ClusterIP      10.96.196.111   <none>         9090/TCP                     15m
+stable-kube-state-metrics                 ClusterIP      10.96.230.76    <none>         8080/TCP                     15m
+stable-prometheus-node-exporter           ClusterIP      10.96.155.190   <none>         9100/TCP                     15m
+```
+
 2. Задеплоить тестовое приложение, например, [nginx](https://www.nginx.com/) сервер отдающий статическую страницу.
 
 Рекомендуемый способ выполнения:
@@ -133,45 +143,3 @@
 1. Интерфейс ci/cd сервиса доступен по http.
 2. При любом коммите в репозиторие с тестовым приложением происходит сборка и отправка в регистр Docker образа.
 3. При создании тега (например, v1.0.0) происходит сборка и отправка с соответствующим label в регистр, а также деплой соответствующего Docker образа в кластер Kubernetes.
-
-
-
-
-# Terraform
-
-## Требования
-- файл `.terraformrc` в ~/
-```js
-provider_installation {
-  network_mirror {
-    url = "https://terraform-mirror.yandexcloud.net/"
-    include = ["registry.terraform.io/*/*"]
-  }
-  direct {
-    exclude = ["registry.terraform.io/*/*"]
-  }
-}
-```
-- установленный и настроенный yandex cloud CLI
-
-## Terraform Backend
-S3 в Яндекс Облаке
-Конфигурация хранится в файле backend.key, который создается при запуске init
-
-## Init
-
-Запустить в папке init 
-```sh
-terrafrom apply -var-file=.tfvars
-```
-Создает: 
-- сервисный аккаунт и его токены и ключи
-- бакет для terraform backend
-- подставляет токены в файл конфигурации backend - backend.key
-- json файл с ключами сервисного аккаунта для конфигурации provider
-
-## Создание инфраструктуры в Яндекс Облаке
-```sh
-terraform init -backend-config=backend.key
-terraform apply -var-file=.tfvars
-```
