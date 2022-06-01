@@ -69,62 +69,36 @@
 ---
 ### Создание тестового приложения
 
-Подготовил тестовое приложение и Dockerfile для него.
+Подготовил тестовое приложение и Dockerfile для него.  
 [Github](https://github.com/nchepurnenko/d-app)  
 [Dockerhub](https://hub.docker.com/r/chebyrek/d-app)
 
 ---
 ### Подготовка cистемы мониторинга и деплой приложения
 
-Задеплоил в кластер стек Prometheus-Alertmanager-Grafana с помощью helm
-```
-$ helm install stable prometheus-community/kube-prometheus-stack
-NAME: stable
-LAST DEPLOYED: Mon May 30 10:11:22 2022
-NAMESPACE: default
-STATUS: deployed
-REVISION: 1
+1. Задеплоил стек Prometheus-Alertmanager-Grafana, [Helm chart](https://github.com/nchepurnenko/d-k8s/tree/master/kube-prometheus-stack). В values.yml для Grafana установил тип сервиса LoadBalancer и порт 3000.
+  ```sh
+  $ helm install kube-monitor ./kube-prometheus-stack
+  $ kubectl get pods
+    NAME                                                     READY   STATUS    RESTARTS   AGE
+    alertmanager-kube-monitor-kube-promethe-alertmanager-0   2/2     Running   0          22m
+    kube-monitor-grafana-78db6c7555-8rbx6                    3/3     Running   0          8m31s
+    kube-monitor-kube-promethe-operator-7ffffd4bb6-75r7r     1/1     Running   0          22m
+    kube-monitor-kube-state-metrics-8498896857-zc4kk         1/1     Running   0          22m
+    kube-monitor-prometheus-node-exporter-lzqgh              1/1     Running   0          22m
+    kube-monitor-prometheus-node-exporter-qz2td              1/1     Running   0          22m
+    kube-monitor-prometheus-node-exporter-s49g4              1/1     Running   0          22m
+    prometheus-kube-monitor-kube-promethe-prometheus-0       2/2     Running   0          22m
+  ``` 
+2. Создал [helm chart](https://github.com/nchepurnenko/d-k8s/tree/master/app) для своего приложения, задеплоил в кластер
+  ```sh
+  $ helm install v1.0.0 ./app
+  $ kubectl get pods | grep simple
+    simple-app-74f8fc76b9-bjnzn                              1/1     Running   0          27m
+    simple-app-74f8fc76b9-dspvw                              1/1     Running   0          27m
+    simple-app-74f8fc76b9-srphp                              1/1     Running   0          27m
+  ```
 
-$ kubectl --namespace default get pods -l "release=stable"
-NAME                                                   READY   STATUS    RESTARTS   AGE
-stable-kube-prometheus-sta-operator-6ff96ff48d-9tmkh   1/1     Running   0          2m47s
-stable-kube-state-metrics-65bcb89bd9-ssgd8             1/1     Running   0          2m48s
-stable-prometheus-node-exporter-7qthb                  1/1     Running   0          2m48s
-stable-prometheus-node-exporter-w6kq4                  1/1     Running   0          2m48s
-stable-prometheus-node-exporter-wgq6p                  1/1     Running   0          2m48s
-```
-Для доступа к интерфейсу grafana изменил тип на LoadBalancer.
-```
-$ kubectl edit svc stable-grafana
-
-$ kubectl get svc
-NAME                                      TYPE           CLUSTER-IP      EXTERNAL-IP    PORT(S)                      AGE
-alertmanager-operated                     ClusterIP      None            <none>         9093/TCP,9094/TCP,9094/UDP   14m
-kubernetes                                ClusterIP      10.96.128.1     <none>         443/TCP                      22m
-prometheus-operated                       ClusterIP      None            <none>         9090/TCP                     14m
-stable-grafana                            LoadBalancer   10.96.172.130   51.250.42.99   80:31234/TCP                 15m
-stable-kube-prometheus-sta-alertmanager   ClusterIP      10.96.253.181   <none>         9093/TCP                     15m
-stable-kube-prometheus-sta-operator       ClusterIP      10.96.248.228   <none>         443/TCP                      15m
-stable-kube-prometheus-sta-prometheus     ClusterIP      10.96.196.111   <none>         9090/TCP                     15m
-stable-kube-state-metrics                 ClusterIP      10.96.230.76    <none>         8080/TCP                     15m
-stable-prometheus-node-exporter           ClusterIP      10.96.155.190   <none>         9100/TCP                     15m
-```
-
-2. Задеплоить тестовое приложение, например, [nginx](https://www.nginx.com/) сервер отдающий статическую страницу.
-
-Рекомендуемый способ выполнения:
-1. Воспользовать пакетом [kube-prometheus](https://github.com/prometheus-operator/kube-prometheus), который уже включает в себя [Kubernetes оператор](https://operatorhub.io/) для [grafana](https://grafana.com/), [prometheus](https://prometheus.io/), [alertmanager](https://github.com/prometheus/alertmanager) и [node_exporter](https://github.com/prometheus/node_exporter). При желании можете собрать все эти приложения отдельно.
-2. Для организации конфигурации использовать [qbec](https://qbec.io/), основанный на [jsonnet](https://jsonnet.org/). Обратите внимание на имеющиеся функции для интеграции helm конфигов и [helm charts](https://helm.sh/)
-3. Если на первом этапе вы не воспользовались [Terraform Cloud](https://app.terraform.io/), то задеплойте в кластер [atlantis](https://www.runatlantis.io/) для отслеживания изменений инфраструктуры.
-
-Альтернативный вариант:
-1. Для организации конфигурации можно использовать [helm charts](https://helm.sh/)
-
-Ожидаемый результат:
-1. Git репозиторий с конфигурационными файлами для настройки Kubernetes.
-2. Http доступ к web интерфейсу grafana.
-3. Дашборды в grafana отображающие состояние Kubernetes кластера.
-4. Http доступ к тестовому приложению.
 
 ---
 ### Установка и настройка CI/CD
