@@ -212,3 +212,32 @@ resource "yandex_kubernetes_node_group" "clusterNodes-c" {
     }
   }
 }
+
+# resource "yandex_compute_instance" "web-server" {
+
+#   count = 1
+
+#   name     = "ws${count.index}"
+#   hostname = "ws${count.index}"
+
+#   resources {
+#     cores         = 2
+#     memory        = 1
+#     core_fraction = 5
+#   }
+
+#   network_interface {
+#     subnet_id = yandex_vpc_subnet.subnet-c.id
+#   }
+
+#   boot_disk {
+#     initialize_params {
+#       image_id = "fd832gltdaeepe0m2hi8" # LAMP
+#       size     = 10
+#     }
+#   }
+
+#   scheduling_policy {
+#     preemptible = true
+#   }
+# }
