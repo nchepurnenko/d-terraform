@@ -7,7 +7,7 @@ projects:
 - name: ft_terraform
   dir: .
   workspace: stage
-  terraform_version: v0.12.0
+  terraform_version: v1.1.9
   delete_source_branch_on_merge: true
   autoplan:
     when_modified: ["*.tf", "../modules/**/*.tf"]
