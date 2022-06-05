@@ -27,8 +27,7 @@ workflows:
       # - run: terraform plan -input=false -refresh -var-file=.tfvars
     apply:
       steps:
-      - apply:
-          extra_args: ["-var-file", "/atlantis-data/repos/netology_fw/ft_terraform/.tfvars"]
+      - apply
 # allowed_regexp_prefixes:
 # - dev/
 # - staging/
