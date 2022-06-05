@@ -10,7 +10,7 @@ terraform {
 }
 
 provider "yandex" {
-  service_account_key_file = file("../sa_terraform_auth.key")
+  service_account_key_file = file("/atlantis-data/repos/netology_fw/ft_terraform/sa_terraform_auth.key")
   cloud_id                 = var.cloud_id
   folder_id                = var.folder_id
   zone                     = "ru-central1-a"
